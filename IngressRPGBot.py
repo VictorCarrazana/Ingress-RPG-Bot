@@ -1,4 +1,7 @@
+from flask import Flask
+import threading
 import os
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,9 +14,28 @@ from parser import parse_stats
 from calculator import calculate_profiles
 
 
+# ==========================================
+# TOKEN
+# ==========================================
+
 TOKEN = os.getenv("BOT_TOKEN")
 
 
+# ==========================================
+# FLASK WEB SERVER
+# ==========================================
+
+web_app = Flask(__name__)
+
+
+@web_app.route("/")
+def home():
+    return "Ingress RPG Bot Online"
+
+
+# ==========================================
+# TELEGRAM MESSAGE HANDLER
+# ==========================================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -36,14 +58,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         response = ""
 
+        response += "━━━━━━━━━━━━━━\n"
         response += f"AGENTE: {player_data['Agent Name']}\n"
-        response += f"FACTION: {player_data['Agent Faction']}\n\n"
+        response += f"FACTION: {player_data['Agent Faction']}\n"
+        response += "━━━━━━━━━━━━━━\n\n"
 
-        response += f"CLASE PRINCIPAL: {main_class}\n"
-        response += f"SUBCLASE: {sub_class}\n\n"
+        response += f"CLASE PRINCIPAL\n{main_class}\n\n"
+        response += f"SUBCLASE\n{sub_class}\n\n"
+
+        response += "📊 ATRIBUTOS\n\n"
 
         for name, score in sorted_results:
-            response += f"{name}: {score}%\n"
+
+            bar = "█" * int(score / 10)
+
+            response += f"{name}: {bar} {score}%\n"
+
+        response += "\n━━━━━━━━━━━━━━"
 
         await update.message.reply_text(response)
 
@@ -54,6 +85,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# ==========================================
+# TELEGRAM BOT
+# ==========================================
+
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(
@@ -62,4 +97,27 @@ app.add_handler(
 
 print("Bot iniciado...")
 
-app.run_polling()
+
+# ==========================================
+# THREAD BOT
+# ==========================================
+
+def run_bot():
+    app.run_polling()
+
+
+bot_thread = threading.Thread(target=run_bot)
+
+bot_thread.start()
+
+
+# ==========================================
+# START FLASK SERVER
+# ==========================================
+
+PORT = int(os.environ.get("PORT", 10000))
+
+web_app.run(
+    host="0.0.0.0",
+    port=PORT
+)
