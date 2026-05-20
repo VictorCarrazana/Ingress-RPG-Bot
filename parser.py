@@ -1,5 +1,6 @@
-HEADERS = [
+import re
 
+HEADERS = [
     "Time Span",
     "Agent Name",
     "Agent Faction",
@@ -65,49 +66,51 @@ HEADERS = [
 ]
 
 
-def parse_stats(text):
+def parse_value(v):
+    if v is None:
+        return 0
 
-    # convertir todo a una sola línea
-    clean_text = text.replace("\n", " ")
+    v = v.strip()
 
-    # separar palabras
-    tokens = clean_text.split()
-
-    # buscar ALL TIME
+    # limpiar separadores raros
+    v = v.replace(",", "")
+    
     try:
-        start_index = tokens.index("ALL")
+        return int(v)
     except:
-        raise Exception(
-            "No se encontró inicio de stats."
-        )
+        try:
+            return float(v)
+        except:
+            return v
 
-    # reconstruir Time Span
-    tokens[start_index] = "ALL TIME"
 
-    # eliminar TIME sobrante
-    del tokens[start_index + 1]
+def extract_field(text, field):
+    """
+    Busca "FieldName: value" o "FieldName value"
+    tolerante a saltos, emojis y Telegram
+    """
 
-    values = tokens[start_index:]
+    pattern = rf"{re.escape(field)}\s*[:\-]?\s*([^\n]+)"
+    match = re.search(pattern, text, re.IGNORECASE)
 
-    if len(values) < len(HEADERS):
-        raise Exception(
-            "Stats incompletas."
-        )
+    if not match:
+        return None
 
+    value = match.group(1)
+
+    # cortar si aparece otro header después (evita contaminación)
+    for h in HEADERS:
+        if h != field and h in value:
+            value = value.split(h)[0]
+
+    return value.strip()
+
+
+def parse_stats(text):
     data = {}
 
-    for i, header in enumerate(HEADERS):
-
-        value = values[i]
-
-        try:
-            data[header] = int(value)
-
-        except:
-            try:
-                data[header] = float(value)
-
-            except:
-                data[header] = value
+    for header in HEADERS:
+        raw_value = extract_field(text, header)
+        data[header] = parse_value(raw_value)
 
     return data
