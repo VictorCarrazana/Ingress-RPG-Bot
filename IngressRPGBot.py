@@ -102,22 +102,20 @@ print("Bot iniciado...")
 # THREAD BOT
 # ==========================================
 
-def run_bot():
-    app.run_polling()
+def run_web():
+
+    PORT = int(os.environ.get("PORT", 10000))
+
+    web_app.run(
+        host="0.0.0.0",
+        port=PORT
+    )
 
 
-bot_thread = threading.Thread(target=run_bot)
+web_thread = threading.Thread(target=run_web)
 
-bot_thread.start()
+web_thread.start()
 
 
-# ==========================================
-# START FLASK SERVER
-# ==========================================
-
-PORT = int(os.environ.get("PORT", 10000))
-
-web_app.run(
-    host="0.0.0.0",
-    port=PORT
-)
+# Ejecutar bot en hilo principal
+app.run_polling()
